@@ -11,6 +11,7 @@ class ChatWorkListener < Redmine::Hook::Listener
     return if issue.is_private?
 
     header = {
+        :notification_user => escape(notification_user(issue)),
         :project => escape(issue.project),
         :title => escape(issue),
         :url => object_url(issue),
@@ -37,6 +38,7 @@ class ChatWorkListener < Redmine::Hook::Listener
     return if not journal.notes
 
     header = {
+        :notification_user => escape(notification_user(issue)),
         :project => escape(issue.project),
         :title => escape(issue),
         :url => object_url(issue),
@@ -94,7 +96,9 @@ class ChatWorkListener < Redmine::Hook::Listener
   end
 
   def create_body(body=nil, header=nil, footer=nil)
-    result = '[info]'
+    result = header[:notification_user] || ''
+
+    result += '[info]'
 
     if header
       result +=
@@ -216,5 +220,13 @@ class ChatWorkListener < Redmine::Hook::Listener
     value = "-" if value.empty?
     result = "\n#{title}: #{value}"
     result
+  end
+
+  def notification_user(issue)
+    get_issue_custom_field_value(issue, 'ChatWork通知先')
+  end
+
+  def get_issue_custom_field_value(issue, cf_name)
+    issue.custom_field_values.detect { |c| c.custom_field.name == cf_name }
   end
 end
