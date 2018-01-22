@@ -11,7 +11,7 @@ class ChatWorkListener < Redmine::Hook::Listener
     return if issue.is_private?
 
     header = {
-        :notification_user => escape(notification_user(issue)),
+        :notification_user => escape(notification_users(issue).join("\n")),
         :project => escape(issue.project),
         :title => escape(issue),
         :url => object_url(issue),
@@ -36,9 +36,8 @@ class ChatWorkListener < Redmine::Hook::Listener
     return unless room and Setting.plugin_redmine_chatwork['post_updates'] == '1'
     return if issue.is_private?
     return if not journal.notes
-
     header = {
-        :notification_user => escape(notification_user(issue)),
+        :notification_user => escape(notification_users(issue).join("\n")),
         :project => escape(issue.project),
         :title => escape(issue),
         :url => object_url(issue),
@@ -222,8 +221,9 @@ class ChatWorkListener < Redmine::Hook::Listener
     result
   end
 
-  def notification_user(issue)
-    get_issue_custom_field_value(issue, 'ChatWork通知先')
+  def notification_users(issue)
+    custom_field_value = get_issue_custom_field_value(issue, 'ChatWork通知先')
+    custom_field_value.value if custom_field_value
   end
 
   def get_issue_custom_field_value(issue, cf_name)
