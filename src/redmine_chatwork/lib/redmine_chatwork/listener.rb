@@ -11,6 +11,7 @@ class ChatWorkListener < Redmine::Hook::Listener
     return if issue.is_private?
 
     header = {
+        :notification_user => notification_users(issue),
         :project => escape(issue.project),
         :title => escape(issue),
         :url => object_url(issue),
@@ -32,11 +33,11 @@ class ChatWorkListener < Redmine::Hook::Listener
     disabled = check_disabled issue.project
 
     return if disabled
-    return unless room and Setting.plugin_redmine_chatwork[:post_updates] == '1'
+    return unless room and Setting.plugin_redmine_chatwork['post_updates'] == '1'
     return if issue.is_private?
     return if not journal.notes
-
     header = {
+        :notification_user => notification_users(issue),
         :project => escape(issue.project),
         :title => escape(issue),
         :url => object_url(issue),
@@ -54,7 +55,7 @@ class ChatWorkListener < Redmine::Hook::Listener
   end
 
   def controller_wiki_edit_after_save(context = {})
-    return unless Setting.plugin_redmine_chatwork[:post_wiki_updates] == '1'
+    return unless Setting.plugin_redmine_chatwork['post_wiki_updates'] == '1'
 
     project = context[:project]
     page = context[:page]
@@ -76,7 +77,7 @@ class ChatWorkListener < Redmine::Hook::Listener
 
   def speak(room, header, body=nil, footer=nil)
     url = 'https://api.chatwork.com/v2/rooms/'
-    token = Setting.plugin_redmine_chatwork[:token]
+    token = Setting.plugin_redmine_chatwork['token']
     content = create_body body, header, footer
     reqHeader = {'X-ChatWorkToken' => token}
     endpoint = "#{url}#{room}/messages"
@@ -94,7 +95,9 @@ class ChatWorkListener < Redmine::Hook::Listener
   end
 
   def create_body(body=nil, header=nil, footer=nil)
-    result = '[info]'
+    result = header[:notification_user] || ''
+
+    result += '[info]'
 
     if header
       result +=
@@ -160,7 +163,7 @@ class ChatWorkListener < Redmine::Hook::Listener
 
     val = [
         (proj.custom_value_for(cf).value rescue nil),
-        Setting.plugin_redmine_chatwork[:room],
+        Setting.plugin_redmine_chatwork['room'],
     ].find { |v| v.present? }
 
     rid = val.match(/#!rid\d+/)
@@ -216,5 +219,14 @@ class ChatWorkListener < Redmine::Hook::Listener
     value = "-" if value.empty?
     result = "\n#{title}: #{value}"
     result
+  end
+
+  def notification_users(issue)
+    custom_field_value = get_issue_custom_field_value(issue, 'ChatWork通知先')
+    custom_field_value ? custom_field_value.value.join("\n") : ''
+  end
+
+  def get_issue_custom_field_value(issue, cf_name)
+    issue.custom_field_values.detect { |c| c.custom_field.name == cf_name }
   end
 end
